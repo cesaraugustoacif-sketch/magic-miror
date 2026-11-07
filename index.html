@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Mi MagicMirror HTML</title>
+  <style>
+    body {
+      background: black;
+      color: white;
+      font-family: Arial, sans-serif;
+      margin: 0;
+    }
+
+    /* Contenedor principal */
+    #container {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding: 20px;
+    }
+
+    #left, #center, #right {
+      flex: 1;
+      text-align: left;
+    }
+
+    /* Reloj */
+    #clock {
+      font-size: 80px;
+      text-align: center;
+    }
+
+    /* Clima con animación */
+    #weather {
+      font-size: 44px;
+      text-align: right;
+      animation: fadeInRight 2s ease-in-out;
+    }
+
+    /* Compliments */
+    #compliments {
+      font-size: 28px;
+      text-align: left;
+      margin-top: 40;
+    }
+
+    /* Noticias y calendario abajo */
+    #bottom {
+      position: fixed;
+      bottom: 0;
+      width: 100%;
+      text-align: center;
+      background: rgba(0,0,0,0.6);
+      padding: 10px;
+    }
+
+    #news, #calendar {
+      font-size: 40px;
+      margin: 5px;
+    }
+
+    /* Animación para el clima */
+    @keyframes fadeInRight {
+      from { opacity: 0; transform: translateX(50px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+  </style>
+</head>
+<body>
+  <div id="container">
+    <div id="left">
+      <div id="clock"></div>
+    </div>
+    <div id="center">
+      <div id="compliments"></div>
+    </div>
+    <div id="right">
+      <div id="weather"></div>
+    </div>
+  </div>
+
+  <div id="bottom">
+    <div id="news"></div>
+    <div id="calendar"></div>
+  </div>
+
+  <!-- Librería para leer ICS -->
+  <script src="https://cdn.jsdelivr.net/npm/ical.js"></script>
+  <script>
+    // 🔹 Reloj
+    function updateClock() {
+      const now = new Date();
+      document.getElementById("clock").innerText = now.toLocaleTimeString();
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // 🔹 Clima con Open-Meteo (Bogotá)
+    async function loadWeather() {
+      const res = await fetch("https://api.open-meteo.com/v1/forecast?latitude=4.7110&longitude=-74.0721&current_weather=true");
+      const data = await res.json();
+      const w = data.current_weather;
+      document.getElementById("weather").innerText =
+        `Bogotá: ${w.temperature}°C, viento ${w.windspeed} km/h`;
+    }
+    loadWeather();
+
+    // 🔹 Noticias (ejemplo con El País RSS)
+    async function loadNews() {
+      try {
+        const res = await fetch("https://api.rss2json.com/v1/api.json?rss_url=https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/portada");
+        const data = await res.json();
+        document.getElementById("news").innerText = "Noticias: " + data.items[0].title;
+      } catch (e) {
+        document.getElementById("news").innerText = "No se pudieron cargar las noticias.";
+      }
+    }
+    loadNews();
+
+    // 🔹 Calendario ICS (Festivos Colombia)
+    async function loadCalendar() {
+      try {
+        const res = await fetch("https://calendar.google.com/calendar/ical/es.co%23holiday%40group.v.calendar.google.com/public/basic.ics");
+        const text = await res.text();
+        const jcalData = ICAL.parse(text);
+        const comp = new ICAL.Component(jcalData);
+        const events = comp.getAllSubcomponents("vevent");
+
+        let output = "Próximos festivos:\n";
+        events.slice(0,5).forEach(ev => {
+          const e = new ICAL.Event(ev);
+          output += `${e.startDate.toJSDate().toLocaleDateString()} - ${e.summary}\n`;
+        });
+        document.getElementById("calendar").innerText = output;
+      } catch (e) {
+        document.getElementById("calendar").innerText = "No se pudo cargar el calendario.";
+      }
+    }
+    loadCalendar();
+
+    // 🔹 Compliments
+    const compliments = {
+      anytime: [
+        "¡Qué bien te ves hoy!",
+        "Sigue adelante, lo estás logrando.",
+        "Hoy será un gran día."
+      ],
+      morning: [
+        "Buenos días, ¡a brillar!",
+        "El café sabe mejor con tu energía.",
+        "Empieza el día con una sonrisa."
+      ],
+      afternoon: [
+        "La tarde es perfecta para avanzar.",
+        "Tu esfuerzo vale la pena.",
+        "¡Qué buena vibra tienes!"
+      ],
+      evening: [
+        "Descansa, te lo mereces.",
+        "Hoy hiciste un gran trabajo.",
+        "Relájate y disfruta la noche."
+      ]
+    };
+
+    function getCompliment() {
+      const hour = new Date().getHours();
+      let list;
+      if (hour < 12) list = compliments.morning;
+      else if (hour < 18) list = compliments.afternoon;
+      else list = compliments.evening;
+      list = list.concat(compliments.anytime);
+      const phrase = list[Math.floor(Math.random() * list.length)];
+      document.getElementById("compliments").innerText = phrase;
+    }
+    setInterval(getCompliment, 10000);
+    getCompliment();
+  </script>
+</body>
+</html>
