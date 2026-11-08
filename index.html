@@ -41,7 +41,7 @@
     #compliments {
       font-size: 28px;
       text-align: left;
-      margin-top: 40;
+      margin-top: 40px;
     }
 
     /* Noticias y calendario abajo */
@@ -84,8 +84,6 @@
     <div id="calendar"></div>
   </div>
 
-  <!-- Librería para leer ICS -->
-  <script src="https://cdn.jsdelivr.net/npm/ical.js"></script>
   <script>
     // 🔹 Reloj
     function updateClock() {
@@ -97,11 +95,20 @@
 
     // 🔹 Clima con Open-Meteo (Bogotá)
     async function loadWeather() {
-      const res = await fetch("https://api.open-meteo.com/v1/forecast?latitude=4.7110&longitude=-74.0721&current_weather=true");
-      const data = await res.json();
-      const w = data.current_weather;
-      document.getElementById("weather").innerText =
-        `Bogotá: ${w.temperature}°C, viento ${w.windspeed} km/h`;
+      try {
+        const res = await fetch("https://api.open-meteo.com/v1/forecast?latitude=4.7110&longitude=-74.0721&current_weather=true");
+        if (!res.ok) throw new Error(`Error del servicio de clima: ${res.status}`);
+        const data = await res.json();
+        const w = data.current_weather;
+        if (!w || !Number.isFinite(w.temperature) || !Number.isFinite(w.windspeed)) {
+          throw new Error("Respuesta de clima incompleta");
+        }
+        document.getElementById("weather").innerText =
+          `Bogotá: ${w.temperature}°C, viento ${w.windspeed} km/h`;
+      } catch (e) {
+        console.error("No se pudo cargar el clima:", e);
+        document.getElementById("weather").innerText = "No se pudo cargar el clima.";
+      }
     }
     loadWeather();
 
@@ -109,30 +116,51 @@
     async function loadNews() {
       try {
         const res = await fetch("https://api.rss2json.com/v1/api.json?rss_url=https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/portada");
+        if (!res.ok) throw new Error(`Error del servicio de noticias: ${res.status}`);
         const data = await res.json();
+        if (data.status !== "ok" || !Array.isArray(data.items) ||
+            !data.items[0] || typeof data.items[0].title !== "string" || !data.items[0].title.trim()) {
+          throw new Error("No hay noticias disponibles en la respuesta");
+        }
         document.getElementById("news").innerText = "Noticias: " + data.items[0].title;
       } catch (e) {
+        console.error("No se pudieron cargar las noticias:", e);
         document.getElementById("news").innerText = "No se pudieron cargar las noticias.";
       }
     }
     loadNews();
 
-    // 🔹 Calendario ICS (Festivos Colombia)
+    // 🔹 Festivos nacionales de Colombia (Nager.Date)
     async function loadCalendar() {
       try {
-        const res = await fetch("https://calendar.google.com/calendar/ical/es.co%23holiday%40group.v.calendar.google.com/public/basic.ics");
-        const text = await res.text();
-        const jcalData = ICAL.parse(text);
-        const comp = new ICAL.Component(jcalData);
-        const events = comp.getAllSubcomponents("vevent");
-
-        let output = "Próximos festivos:\n";
-        events.slice(0,5).forEach(ev => {
-          const e = new ICAL.Event(ev);
-          output += `${e.startDate.toJSDate().toLocaleDateString()} - ${e.summary}\n`;
-        });
-        document.getElementById("calendar").innerText = output;
+        const dateParts = new Intl.DateTimeFormat("en-US", {
+          timeZone: "America/Bogota", year: "numeric", month: "2-digit", day: "2-digit"
+        }).formatToParts(new Date());
+        const part = type => dateParts.find(item => item.type === type).value;
+        const today = `${part("year")}-${part("month")}-${part("day")}`;
+        const year = Number(part("year"));
+        const responses = await Promise.all([year, year + 1].map(async currentYear => {
+          const res = await fetch(`https://date.nager.at/api/v3/PublicHolidays/${currentYear}/CO`);
+          if (!res.ok) throw new Error(`Error del servicio de festivos: ${res.status}`);
+          const holidays = await res.json();
+          if (!Array.isArray(holidays) || !holidays.every(holiday =>
+            holiday && /^\d{4}-\d{2}-\d{2}$/.test(holiday.date) &&
+            typeof holiday.localName === "string" && typeof holiday.global === "boolean")) {
+            throw new Error("Respuesta de festivos inválida");
+          }
+          return holidays;
+        }));
+        const upcoming = responses.flat()
+          .filter(holiday => holiday.global && holiday.date >= today)
+          .sort((a, b) => a.date.localeCompare(b.date))
+          .slice(0, 5);
+        if (upcoming.length === 0) throw new Error("No hay próximos festivos disponibles");
+        const formatter = new Intl.DateTimeFormat("es-CO", { timeZone: "UTC" });
+        const lines = upcoming.map(holiday =>
+          `${formatter.format(new Date(`${holiday.date}T00:00:00Z`))} - ${holiday.localName}`);
+        document.getElementById("calendar").innerText = "Próximos festivos:\n" + lines.join("\n");
       } catch (e) {
+        console.error("No se pudo cargar el calendario:", e);
         document.getElementById("calendar").innerText = "No se pudo cargar el calendario.";
       }
     }
