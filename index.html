@@ -2,117 +2,683 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Mi MagicMirror HTML</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101522">
+  <title>Magic Mirror</title>
   <style>
+    :root {
+      color-scheme: dark;
+      --page-background: #101522;
+      --card-background: rgba(25, 33, 49, 0.78);
+      --card-border: rgba(255, 255, 255, 0.1);
+      --text-primary: #f5f7fb;
+      --text-muted: #aab4c7;
+      --accent: #9dc5ff;
+      --font-family: Inter, "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
     body {
-      background: black;
-      color: white;
-      font-family: Arial, sans-serif;
+      min-height: 100vh;
       margin: 0;
+      padding: clamp(20px, 5vw, 64px);
+      color: var(--text-primary);
+      font-family: var(--font-family);
+      background-color: var(--page-background);
+      background-image:
+        radial-gradient(ellipse at 15% 5%, rgba(84, 119, 184, 0.22), transparent 42%),
+        linear-gradient(145deg, rgba(10, 14, 23, 0.18), rgba(10, 14, 23, 0.78));
+      background-position: center;
+      background-size: cover;
+      background-attachment: fixed;
+      transition: background-color 250ms ease, color 250ms ease;
     }
 
-    /* Contenedor principal */
-    #container {
+    button, input, select {
+      font: inherit;
+    }
+
+    button {
+      color: inherit;
+    }
+
+    .app {
+      width: min(1120px, 100%);
+      margin: 0 auto;
+    }
+
+    .topbar {
       display: flex;
+      align-items: center;
       justify-content: space-between;
-      align-items: flex-start;
-      padding: 20px;
+      gap: 16px;
+      margin-bottom: 32px;
     }
 
-    #left, #center, #right {
-      flex: 1;
-      text-align: left;
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
     }
 
-    /* Reloj */
+    .brand-mark {
+      display: grid;
+      width: 42px;
+      height: 42px;
+      place-items: center;
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--accent);
+      font-size: 20px;
+    }
+
+    .brand-name {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 650;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .brand-caption {
+      margin: 4px 0 0;
+      color: var(--text-muted);
+      font-size: 12px;
+    }
+
+    .settings-button, .icon-button, .reset-button {
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.07);
+      cursor: pointer;
+      transition: background 160ms ease, transform 160ms ease;
+    }
+
+    .settings-button {
+      padding: 11px 15px;
+      color: var(--text-primary);
+      font-size: 14px;
+    }
+
+    .settings-button:hover, .icon-button:hover, .reset-button:hover {
+      background: rgba(255, 255, 255, 0.14);
+    }
+
+    .settings-button:active, .icon-button:active, .reset-button:active {
+      transform: scale(0.98);
+    }
+
+    .dashboard {
+      display: grid;
+      grid-template-areas:
+        "clock quote weather"
+        "bottom bottom bottom";
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .dashboard.layout-focus {
+      grid-template-areas:
+        "clock clock"
+        "quote weather"
+        "bottom bottom";
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .dashboard.layout-focus .clock-card {
+      min-height: 250px;
+      text-align: center;
+    }
+
+    .dashboard.layout-focus .clock-card .card-label {
+      justify-content: center;
+    }
+
+    .dashboard.layout-columns {
+      grid-template-areas:
+        "clock weather"
+        "quote quote"
+        "bottom bottom";
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .card {
+      min-width: 0;
+      padding: clamp(20px, 3vw, 30px);
+      border: 1px solid var(--card-border);
+      border-radius: 22px;
+      background: var(--card-background);
+      box-shadow: 0 18px 50px rgba(0, 0, 0, 0.16);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      animation: rise-in 500ms ease both;
+    }
+
+    .clock-card { grid-area: clock; }
+    .compliment-card { grid-area: quote; }
+    .weather-card { grid-area: weather; }
+    .bottom-card { grid-area: bottom; }
+
+    .card-label {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      margin: 0 0 22px;
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 650;
+      letter-spacing: 0.11em;
+      text-transform: uppercase;
+    }
+
+    .label-icon {
+      color: var(--accent);
+      font-size: 16px;
+    }
+
     #clock {
-      font-size: 80px;
-      text-align: center;
+      margin: 0;
+      font-size: clamp(42px, 6vw, 72px);
+      font-variant-numeric: tabular-nums;
+      font-weight: 550;
+      letter-spacing: -0.06em;
+      line-height: 1;
     }
 
-    /* Clima con animación */
-    #weather {
-      font-size: 44px;
-      text-align: right;
-      animation: fadeInRight 2s ease-in-out;
+    #date {
+      margin: 13px 0 0;
+      color: var(--text-muted);
+      font-size: 15px;
+      text-transform: capitalize;
     }
 
-    /* Compliments */
     #compliments {
-      font-size: 28px;
-      text-align: left;
-      margin-top: 40px;
+      min-height: 76px;
+      margin: 0;
+      font-size: clamp(21px, 2.4vw, 29px);
+      font-weight: 500;
+      line-height: 1.4;
     }
 
-    /* Noticias y calendario abajo */
-    #bottom {
-      position: fixed;
-      bottom: 0;
-      width: 100%;
-      text-align: center;
-      background: rgba(0,0,0,0.6);
-      padding: 10px;
+    #weather {
+      margin: 0;
+      font-size: clamp(18px, 2vw, 24px);
+      font-weight: 550;
+      line-height: 1.45;
+    }
+
+    .bottom-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 30px;
+    }
+
+    .data-section + .data-section {
+      padding-left: 30px;
+      border-left: 1px solid var(--card-border);
+    }
+
+    .data-section .card-label {
+      margin-bottom: 15px;
     }
 
     #news, #calendar {
-      font-size: 40px;
-      margin: 5px;
+      margin: 0;
+      color: var(--text-primary);
+      font-size: 15px;
+      line-height: 1.65;
+      white-space: pre-line;
     }
 
-    /* Animación para el clima */
-    @keyframes fadeInRight {
-      from { opacity: 0; transform: translateX(50px); }
+    .settings-backdrop {
+      position: fixed;
+      z-index: 5;
+      inset: 0;
+      display: grid;
+      justify-items: end;
+      background: rgba(4, 8, 15, 0.66);
+      backdrop-filter: blur(5px);
+    }
+
+    .settings-backdrop[hidden] {
+      display: none;
+    }
+
+    .settings-panel {
+      width: min(440px, 100%);
+      height: 100%;
+      overflow-y: auto;
+      padding: 28px;
+      border-left: 1px solid var(--card-border);
+      background: #141b29;
+      box-shadow: -20px 0 60px rgba(0, 0, 0, 0.28);
+      animation: slide-in 220ms ease both;
+    }
+
+    .panel-heading {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 30px;
+    }
+
+    .panel-heading h2 {
+      margin: 0;
+      font-size: 23px;
+    }
+
+    .panel-heading p {
+      margin: 7px 0 0;
+      color: var(--text-muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .icon-button {
+      width: 38px;
+      height: 38px;
+      flex: 0 0 auto;
+      font-size: 19px;
+    }
+
+    .setting-group {
+      margin: 0 0 25px;
+      padding: 0;
+      border: 0;
+    }
+
+    .setting-group legend {
+      margin-bottom: 12px;
+      font-size: 14px;
+      font-weight: 650;
+    }
+
+    .setting-hint {
+      margin: -4px 0 12px;
+      color: var(--text-muted);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .setting-control {
+      width: 100%;
+      min-height: 44px;
+      padding: 10px 12px;
+      border: 1px solid var(--card-border);
+      border-radius: 11px;
+      background: #1b2434;
+      color: var(--text-primary);
+    }
+
+    .color-control {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .color-control input {
+      width: 44px;
+      height: 38px;
+      padding: 3px;
+      border: 1px solid var(--card-border);
+      border-radius: 9px;
+      background: transparent;
+      cursor: pointer;
+    }
+
+    .color-control span {
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+
+    .panel-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 32px;
+      padding-top: 20px;
+      border-top: 1px solid var(--card-border);
+    }
+
+    .reset-button {
+      padding: 10px 12px;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+
+    #settings-status {
+      max-width: 180px;
+      margin: 0;
+      color: var(--text-muted);
+      font-size: 12px;
+      text-align: right;
+    }
+
+    :focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 3px;
+    }
+
+    @keyframes rise-in {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes slide-in {
+      from { opacity: 0.6; transform: translateX(24px); }
       to { opacity: 1; transform: translateX(0); }
+    }
+
+    @media (max-width: 760px) {
+      body {
+        padding: 22px 16px;
+      }
+
+      .dashboard, .dashboard.layout-focus, .dashboard.layout-columns {
+        grid-template-areas:
+          "clock"
+          "weather"
+          "quote"
+          "bottom";
+        grid-template-columns: minmax(0, 1fr);
+        gap: 13px;
+      }
+
+      .dashboard.layout-focus .clock-card {
+        min-height: 0;
+        text-align: left;
+      }
+
+      .dashboard.layout-focus .clock-card .card-label {
+        justify-content: flex-start;
+      }
+
+      .bottom-grid {
+        grid-template-columns: 1fr;
+        gap: 22px;
+      }
+
+      .data-section + .data-section {
+        padding: 20px 0 0;
+        border-top: 1px solid var(--card-border);
+        border-left: 0;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        scroll-behavior: auto !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
     }
   </style>
 </head>
 <body>
-  <div id="container">
-    <div id="left">
-      <div id="clock"></div>
-    </div>
-    <div id="center">
-      <div id="compliments"></div>
-    </div>
-    <div id="right">
-      <div id="weather"></div>
-    </div>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">✦</div>
+        <div>
+          <p class="brand-name">Magic Mirror</p>
+          <p class="brand-caption">Tu espacio, a tu manera</p>
+        </div>
+      </div>
+      <button class="settings-button" id="settings-button" type="button" aria-haspopup="dialog">
+        ⚙ Personalizar
+      </button>
+    </header>
+
+    <main class="dashboard" id="dashboard">
+      <section class="card clock-card" aria-label="Reloj">
+        <h2 class="card-label"><span class="label-icon" aria-hidden="true">◷</span> Ahora</h2>
+        <p id="clock" aria-live="off"></p>
+        <p id="date"></p>
+      </section>
+
+      <section class="card compliment-card" aria-label="Mensaje del día">
+        <h2 class="card-label"><span class="label-icon" aria-hidden="true">✧</span> Un recordatorio</h2>
+        <p id="compliments" aria-live="polite"></p>
+      </section>
+
+      <section class="card weather-card" aria-label="Clima">
+        <h2 class="card-label"><span class="label-icon" aria-hidden="true">☼</span> Bogotá · Clima</h2>
+        <p id="weather" aria-live="polite">Consultando el clima…</p>
+      </section>
+
+      <section class="card bottom-card" aria-label="Noticias y próximos festivos">
+        <div class="bottom-grid">
+          <div class="data-section">
+            <h2 class="card-label"><span class="label-icon" aria-hidden="true">▤</span> Noticias</h2>
+            <p id="news" aria-live="polite">Cargando noticias…</p>
+          </div>
+          <div class="data-section">
+            <h2 class="card-label"><span class="label-icon" aria-hidden="true">▦</span> Próximos festivos</h2>
+            <p id="calendar" aria-live="polite">Cargando calendario…</p>
+          </div>
+        </div>
+      </section>
+    </main>
   </div>
 
-  <div id="bottom">
-    <div id="news"></div>
-    <div id="calendar"></div>
+  <div class="settings-backdrop" id="settings-backdrop" hidden>
+    <section class="settings-panel" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+      <div class="panel-heading">
+        <div>
+          <h2 id="settings-title">Personaliza tu espejo</h2>
+          <p>Los cambios se guardan en este navegador.</p>
+        </div>
+        <button class="icon-button" id="close-settings" type="button" aria-label="Cerrar ajustes">×</button>
+      </div>
+
+      <fieldset class="setting-group">
+        <legend>Fondo</legend>
+        <p class="setting-hint">Elige un color y, si quieres, añade una imagen desde una URL https.</p>
+        <label class="color-control" for="background-color">
+          <input id="background-color" type="color" value="#101522">
+          <span>Color base del fondo</span>
+        </label>
+        <label for="background-image">
+          <span class="setting-hint">URL de imagen (opcional)</span>
+          <input class="setting-control" id="background-image" type="url" placeholder="https://ejemplo.com/fondo.jpg">
+        </label>
+      </fieldset>
+
+      <fieldset class="setting-group">
+        <legend>Tipografía</legend>
+        <label class="setting-hint" for="font-family">Estilo de letra</label>
+        <select class="setting-control" id="font-family">
+          <option value="modern">Moderna</option>
+          <option value="classic">Clásica</option>
+          <option value="rounded">Amable</option>
+          <option value="mono">Monoespaciada</option>
+        </select>
+      </fieldset>
+
+      <fieldset class="setting-group">
+        <legend>Organización de los datos</legend>
+        <label class="setting-hint" for="layout">Distribución del panel</label>
+        <select class="setting-control" id="layout">
+          <option value="standard">Equilibrada · tres columnas</option>
+          <option value="focus">Reloj protagonista</option>
+          <option value="columns">Dos columnas</option>
+        </select>
+      </fieldset>
+
+      <div class="panel-footer">
+        <button class="reset-button" id="reset-settings" type="button">Restablecer</button>
+        <p id="settings-status" role="status" aria-live="polite"></p>
+      </div>
+    </section>
   </div>
 
   <script>
-    // 🔹 Reloj
+    const defaultSettings = {
+      backgroundColor: "#101522",
+      backgroundImage: "",
+      fontFamily: "modern",
+      layout: "standard"
+    };
+
+    const fontFamilies = {
+      modern: 'Inter, "Segoe UI", sans-serif',
+      classic: 'Georgia, "Times New Roman", serif',
+      rounded: '"Trebuchet MS", Arial, sans-serif',
+      mono: '"Courier New", monospace'
+    };
+
+    const settingsElements = {
+      color: document.getElementById("background-color"),
+      image: document.getElementById("background-image"),
+      font: document.getElementById("font-family"),
+      layout: document.getElementById("layout"),
+      status: document.getElementById("settings-status")
+    };
+
+    function loadSettings() {
+      try {
+        const saved = JSON.parse(localStorage.getItem("magicMirrorSettings"));
+        if (!saved || typeof saved !== "object") return { ...defaultSettings };
+        return {
+          backgroundColor: /^#[0-9a-f]{6}$/i.test(saved.backgroundColor)
+            ? saved.backgroundColor : defaultSettings.backgroundColor,
+          backgroundImage: typeof saved.backgroundImage === "string" ? saved.backgroundImage : "",
+          fontFamily: Object.hasOwn(fontFamilies, saved.fontFamily) ? saved.fontFamily : defaultSettings.fontFamily,
+          layout: ["standard", "focus", "columns"].includes(saved.layout) ? saved.layout : defaultSettings.layout
+        };
+      } catch (error) {
+        console.error("No se pudieron leer los ajustes guardados:", error);
+        return { ...defaultSettings };
+      }
+    }
+
+    function applySettings(settings) {
+      document.documentElement.style.setProperty("--page-background", settings.backgroundColor);
+      document.documentElement.style.setProperty("--font-family", fontFamilies[settings.fontFamily]);
+      document.getElementById("dashboard").className = `dashboard layout-${settings.layout}`;
+      document.body.style.backgroundImage = "";
+
+      if (settings.backgroundImage) {
+        try {
+          const imageUrl = new URL(settings.backgroundImage);
+          if (imageUrl.protocol === "https:" || imageUrl.protocol === "http:") {
+            document.body.style.backgroundImage =
+              `linear-gradient(rgba(10, 14, 23, 0.56), rgba(10, 14, 23, 0.78)), url(${JSON.stringify(imageUrl.href)})`;
+          }
+        } catch (error) {
+          console.error("La URL de fondo guardada no es válida:", error);
+        }
+      }
+
+      settingsElements.color.value = settings.backgroundColor;
+      settingsElements.image.value = settings.backgroundImage;
+      settingsElements.font.value = settings.fontFamily;
+      settingsElements.layout.value = settings.layout;
+    }
+
+    function saveSettings() {
+      const imageValue = settingsElements.image.value.trim();
+      if (imageValue) {
+        try {
+          const imageUrl = new URL(imageValue);
+          if (imageUrl.protocol !== "https:" && imageUrl.protocol !== "http:") {
+            throw new Error("La URL debe comenzar con http:// o https://");
+          }
+        } catch (error) {
+          settingsElements.status.textContent = "Escribe una URL de imagen válida (http o https).";
+          return;
+        }
+      }
+
+      const settings = {
+        backgroundColor: settingsElements.color.value,
+        backgroundImage: imageValue,
+        fontFamily: settingsElements.font.value,
+        layout: settingsElements.layout.value
+      };
+      applySettings(settings);
+      try {
+        localStorage.setItem("magicMirrorSettings", JSON.stringify(settings));
+        settingsElements.status.textContent = "Ajustes guardados.";
+      } catch (error) {
+        console.error("No se pudieron guardar los ajustes:", error);
+        settingsElements.status.textContent = "No se pudieron guardar los ajustes.";
+      }
+    }
+
+    const settingsBackdrop = document.getElementById("settings-backdrop");
+    const settingsButton = document.getElementById("settings-button");
+
+    function openSettings() {
+      settingsBackdrop.hidden = false;
+      document.getElementById("close-settings").focus();
+    }
+
+    function closeSettings() {
+      settingsBackdrop.hidden = true;
+      settingsButton.focus();
+    }
+
+    settingsButton.addEventListener("click", openSettings);
+    document.getElementById("close-settings").addEventListener("click", closeSettings);
+    settingsBackdrop.addEventListener("click", event => {
+      if (event.target === settingsBackdrop) closeSettings();
+    });
+    document.addEventListener("keydown", event => {
+      if (event.key === "Escape" && !settingsBackdrop.hidden) closeSettings();
+    });
+    settingsElements.color.addEventListener("input", saveSettings);
+    settingsElements.image.addEventListener("change", saveSettings);
+    settingsElements.font.addEventListener("change", saveSettings);
+    settingsElements.layout.addEventListener("change", saveSettings);
+    document.getElementById("reset-settings").addEventListener("click", () => {
+      applySettings({ ...defaultSettings });
+      try {
+        localStorage.removeItem("magicMirrorSettings");
+        settingsElements.status.textContent = "Ajustes restablecidos.";
+      } catch (error) {
+        console.error("No se pudieron restablecer los ajustes:", error);
+        settingsElements.status.textContent = "No se pudieron restablecer los ajustes.";
+      }
+    });
+
+    applySettings(loadSettings());
+
     function updateClock() {
       const now = new Date();
-      document.getElementById("clock").innerText = now.toLocaleTimeString();
+      document.getElementById("clock").textContent =
+        now.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" });
+      document.getElementById("date").textContent =
+        now.toLocaleDateString("es-CO", { weekday: "long", day: "numeric", month: "long" });
     }
     setInterval(updateClock, 1000);
     updateClock();
 
-    // 🔹 Clima con Open-Meteo (Bogotá)
     async function loadWeather() {
       try {
         const res = await fetch("https://api.open-meteo.com/v1/forecast?latitude=4.7110&longitude=-74.0721&current_weather=true");
         if (!res.ok) throw new Error(`Error del servicio de clima: ${res.status}`);
         const data = await res.json();
-        const w = data.current_weather;
-        if (!w || !Number.isFinite(w.temperature) || !Number.isFinite(w.windspeed)) {
+        const weather = data.current_weather;
+        if (!weather || !Number.isFinite(weather.temperature) || !Number.isFinite(weather.windspeed)) {
           throw new Error("Respuesta de clima incompleta");
         }
-        document.getElementById("weather").innerText =
-          `Bogotá: ${w.temperature}°C, viento ${w.windspeed} km/h`;
-      } catch (e) {
-        console.error("No se pudo cargar el clima:", e);
-        document.getElementById("weather").innerText = "No se pudo cargar el clima.";
+        document.getElementById("weather").textContent =
+          `${weather.temperature}°C · Viento ${weather.windspeed} km/h`;
+      } catch (error) {
+        console.error("No se pudo cargar el clima:", error);
+        document.getElementById("weather").textContent = "No se pudo cargar el clima.";
       }
     }
     loadWeather();
 
-    // 🔹 Noticias (ejemplo con El País RSS)
     async function loadNews() {
       try {
         const res = await fetch("https://api.rss2json.com/v1/api.json?rss_url=https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/portada");
@@ -122,15 +688,14 @@
             !data.items[0] || typeof data.items[0].title !== "string" || !data.items[0].title.trim()) {
           throw new Error("No hay noticias disponibles en la respuesta");
         }
-        document.getElementById("news").innerText = "Noticias: " + data.items[0].title;
-      } catch (e) {
-        console.error("No se pudieron cargar las noticias:", e);
-        document.getElementById("news").innerText = "No se pudieron cargar las noticias.";
+        document.getElementById("news").textContent = data.items[0].title;
+      } catch (error) {
+        console.error("No se pudieron cargar las noticias:", error);
+        document.getElementById("news").textContent = "No se pudieron cargar las noticias.";
       }
     }
     loadNews();
 
-    // 🔹 Festivos nacionales de Colombia (Nager.Date)
     async function loadCalendar() {
       try {
         const dateParts = new Intl.DateTimeFormat("en-US", {
@@ -157,16 +722,15 @@
         if (upcoming.length === 0) throw new Error("No hay próximos festivos disponibles");
         const formatter = new Intl.DateTimeFormat("es-CO", { timeZone: "UTC" });
         const lines = upcoming.map(holiday =>
-          `${formatter.format(new Date(`${holiday.date}T00:00:00Z`))} - ${holiday.localName}`);
-        document.getElementById("calendar").innerText = "Próximos festivos:\n" + lines.join("\n");
-      } catch (e) {
-        console.error("No se pudo cargar el calendario:", e);
-        document.getElementById("calendar").innerText = "No se pudo cargar el calendario.";
+          `${formatter.format(new Date(`${holiday.date}T00:00:00Z`))} · ${holiday.localName}`);
+        document.getElementById("calendar").textContent = lines.join("\n");
+      } catch (error) {
+        console.error("No se pudo cargar el calendario:", error);
+        document.getElementById("calendar").textContent = "No se pudo cargar el calendario.";
       }
     }
     loadCalendar();
 
-    // 🔹 Compliments
     const compliments = {
       anytime: [
         "¡Qué bien te ves hoy!",
@@ -197,8 +761,8 @@
       else if (hour < 18) list = compliments.afternoon;
       else list = compliments.evening;
       list = list.concat(compliments.anytime);
-      const phrase = list[Math.floor(Math.random() * list.length)];
-      document.getElementById("compliments").innerText = phrase;
+      document.getElementById("compliments").textContent =
+        list[Math.floor(Math.random() * list.length)];
     }
     setInterval(getCompliment, 10000);
     getCompliment();
